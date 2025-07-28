@@ -88,3 +88,4 @@ foreach ($file in $files) {
 
 Write-Host "Completed!" -ForegroundColor Green
 
+# ffmpeg -i 'C:\Users\Mehdi\Downloads\input.mp4' -vf 'unsharp=7:7:1.5:7:7:0.0' -c:v libx264 -crf 23 -preset medium -c:a copy 'C:\Users\Mehdi\Downloads\output.mp4'
