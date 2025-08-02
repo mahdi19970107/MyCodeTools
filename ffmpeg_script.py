@@ -73,6 +73,8 @@ def process_videos(input_dir, selected_filters, filter_numbers):
 
     # use_gpu is now passed as an argument
 
+    import sys
+    import re
     for file_path in mp4_files:
         output_file = os.path.join(
             output_dir,
@@ -111,11 +113,25 @@ def process_videos(input_dir, selected_filters, filter_numbers):
                     '-c:a', 'copy', output_file
                 ]
 
+        print(f"Processing: {file_path.name}")
         try:
-            subprocess.run(cmd, check=True)
-            print(f"Processed: {file_path} -> {output_file}")
-        except subprocess.CalledProcessError:
-            print(f"Error processing {file_path}")
+            process = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.DEVNULL, text=True, bufsize=1)
+            time_pattern = re.compile(r'time=([\d:.]+)')
+            last_time = ''
+            for line in process.stderr:
+                match = time_pattern.search(line)
+                if match:
+                    last_time = match.group(1)
+                    print(f"\rProgress: {last_time}", end='', flush=True)
+            process.wait()
+            print("\rProgress: done!           ")
+            if process.returncode == 0:
+                print(f"Processed: {file_path} -> {output_file}")
+            else:
+                print(f"Error processing {file_path}")
+                return
+        except Exception as e:
+            print(f"Error processing {file_path}: {e}")
             return
 
 def main():
