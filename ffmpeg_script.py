@@ -196,9 +196,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-# This script is designed to be run in a terminal or command line environment.
-# Ensure ffmpeg and ffprobe are installed and accessible in your PATH.
-# For Termux, ensure you have the necessary permissions to access storage.
-# You can run this script by executing `python ffmpeg_script.py` in your terminal.
-# Make sure to have the required Python packages installed, such as `subprocess`, `os
