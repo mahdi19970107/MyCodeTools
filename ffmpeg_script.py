@@ -106,6 +106,26 @@ def process_videos(input_dir, selected_filters, filter_numbers):
             f"{file_path.stem}_new({','.join(map(str, filter_numbers))}).mp4"
         )
 
+        # Check if output file exists
+        if os.path.exists(output_file):
+            while True:
+                resp = input(f"Output file exists: {output_file}\nOverwrite? [y]es/[n]o/[q]uit: ").strip().lower()
+                if resp in ('y', 'yes'):
+                    break
+                elif resp in ('n', 'no'):
+                    print(f"Skipping: {file_path.name}")
+                    # Show as skipped in progress
+                    print(f"Skipped: {file_path} -> {output_file}")
+                    # Continue to next file
+                    goto_next = True
+                    break
+                elif resp in ('q', 'quit'):
+                    print("Aborted by user.")
+                    return
+            if 'goto_next' in locals() and goto_next:
+                del goto_next
+                continue
+
         # Get duration
         duration = get_duration(file_path)
         duration_str = format_time(duration) if duration else "?"
