@@ -106,9 +106,12 @@ def process_videos(input_dir, selected_filters, filter_numbers):
             f"{file_path.stem}_new({','.join(map(str, filter_numbers))}).mp4"
         )
 
+        # Get duration (needed for progress, even if skipping)
+        duration = get_duration(file_path)
+        duration_str = format_time(duration) if duration else "?"
+
         # Check if output file exists
         if os.path.exists(output_file):
-            # Print prompt on a new line and flush to ensure visibility
             print(f"\nOutput file exists: {output_file}", flush=True)
             while True:
                 resp = input("Overwrite? [y]es/[n]o/[q]uit: ").strip().lower()
@@ -117,6 +120,8 @@ def process_videos(input_dir, selected_filters, filter_numbers):
                 elif resp in ('n', 'no'):
                     print(f"Skipping: {file_path.name}")
                     print(f"Skipped: {file_path} -> {output_file}")
+                    # Print a progress line for skipped file
+                    print(f"Progress: {duration_str} / {duration_str} (100.0%) [{idx}/{total_videos}]  (skipped)")
                     goto_next = True
                     break
                 elif resp in ('q', 'quit'):
@@ -125,10 +130,6 @@ def process_videos(input_dir, selected_filters, filter_numbers):
             if 'goto_next' in locals() and goto_next:
                 del goto_next
                 continue
-
-        # Get duration
-        duration = get_duration(file_path)
-        duration_str = format_time(duration) if duration else "?"
 
         # Prepare ffmpeg command
         if platform.system() == 'Windows':
