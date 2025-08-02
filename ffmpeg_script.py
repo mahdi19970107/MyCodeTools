@@ -23,13 +23,8 @@ filter_names = [
 ]
 
 def get_input_directory():
-    if platform.system() == 'Windows':
-        default_dir = os.path.expanduser('~/Downloads')
-    else:  # Termux/Android
-        default_dir = os.path.expanduser('~/storage/downloads')
-    
-    current_dir = os.getcwd()
-    input_dir = current_dir if current_dir != os.path.expanduser('~') else default_dir
+    # Always use current working directory, regardless of OS
+    input_dir = os.getcwd()
     print(f"Using input directory: {input_dir}")
     return input_dir
 
@@ -40,7 +35,7 @@ def get_filter_and_cpu_selection():
     
     while True:
         try:
-            selection = input("\nEnter filter numbers to apply (e.g. 1,3,4) [default: 1,3,4,5], and add 'gpu' to use GPU (e.g. 1,3,gpu): ")
+            selection = input("\nEnter filter numbers to apply [default: 1,3,4,5] you can add 'gpu' to use GPU (e.g. 1,3,gpu): ")
             use_gpu = False
             if not selection.strip():
                 selected = [1, 3, 4, 5]
