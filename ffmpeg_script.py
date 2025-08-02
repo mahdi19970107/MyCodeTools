@@ -75,11 +75,40 @@ def process_videos(input_dir, selected_filters, filter_numbers):
 
     import sys
     import re
-    for file_path in mp4_files:
+    from datetime import timedelta
+
+    def get_duration(file_path):
+        # Use ffprobe to get duration in seconds
+        try:
+            result = subprocess.run([
+                'ffprobe', '-v', 'error', '-show_entries', 'format=duration',
+                '-of', 'default=noprint_wrappers=1:nokey=1', str(file_path)
+            ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            duration = float(result.stdout.strip())
+            return duration
+        except Exception:
+            return None
+
+    def format_time(seconds):
+        # Format seconds as HH:MM:SS.xx
+        try:
+            td = timedelta(seconds=float(seconds))
+            total_seconds = int(td.total_seconds())
+            ms = int((td.total_seconds() - total_seconds) * 100)
+            return f"{str(td)}.{ms:02d}" if ms else str(td)
+        except Exception:
+            return str(seconds)
+
+    total_videos = len(mp4_files)
+    for idx, file_path in enumerate(mp4_files, 1):
         output_file = os.path.join(
             output_dir,
             f"{file_path.stem}_new({','.join(map(str, filter_numbers))}).mp4"
         )
+
+        # Get duration
+        duration = get_duration(file_path)
+        duration_str = format_time(duration) if duration else "?"
 
         # Prepare ffmpeg command
         if platform.system() == 'Windows':
@@ -113,18 +142,39 @@ def process_videos(input_dir, selected_filters, filter_numbers):
                     '-c:a', 'copy', output_file
                 ]
 
-        print(f"Processing: {file_path.name}")
+        print(f"Processing: {file_path.name} [{idx}/{total_videos}]")
         try:
             process = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.DEVNULL, text=True, bufsize=1)
             time_pattern = re.compile(r'time=([\d:.]+)')
             last_time = ''
+            percent = 0
             for line in process.stderr:
                 match = time_pattern.search(line)
                 if match:
                     last_time = match.group(1)
-                    print(f"\rProgress: {last_time}", end='', flush=True)
+                    # Convert last_time to seconds for percent
+                    def parse_ffmpeg_time(t):
+                        try:
+                            parts = t.split(':')
+                            if len(parts) == 3:
+                                h, m, s = parts
+                                return float(h) * 3600 + float(m) * 60 + float(s)
+                            elif len(parts) == 2:
+                                m, s = parts
+                                return float(m) * 60 + float(s)
+                            else:
+                                return float(parts[0])
+                        except Exception:
+                            return 0
+                    elapsed = parse_ffmpeg_time(last_time)
+                    if duration:
+                        percent = min(100, (elapsed / duration) * 100)
+                        percent_str = f"{percent:5.1f}%"
+                    else:
+                        percent_str = "   ?%"
+                    print(f"\rProgress: {last_time} / {duration_str} ({percent_str}) [{idx}/{total_videos}]", end='', flush=True)
             process.wait()
-            print("\rProgress: done!           ")
+            print(f"\rProgress: {duration_str} / {duration_str} (100.0%) [{idx}/{total_videos}]           ")
             if process.returncode == 0:
                 print(f"Processed: {file_path} -> {output_file}")
             else:
@@ -146,3 +196,9 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+# This script is designed to be run in a terminal or command line environment.
+# Ensure ffmpeg and ffprobe are installed and accessible in your PATH.
+# For Termux, ensure you have the necessary permissions to access storage.
+# You can run this script by executing `python ffmpeg_script.py` in your terminal.
+# Make sure to have the required Python packages installed, such as `subprocess`, `os
