@@ -108,15 +108,15 @@ def process_videos(input_dir, selected_filters, filter_numbers):
 
         # Check if output file exists
         if os.path.exists(output_file):
+            # Print prompt on a new line and flush to ensure visibility
+            print(f"\nOutput file exists: {output_file}", flush=True)
             while True:
-                resp = input(f"Output file exists: {output_file}\nOverwrite? [y]es/[n]o/[q]uit: ").strip().lower()
+                resp = input("Overwrite? [y]es/[n]o/[q]uit: ").strip().lower()
                 if resp in ('y', 'yes'):
                     break
                 elif resp in ('n', 'no'):
                     print(f"Skipping: {file_path.name}")
-                    # Show as skipped in progress
                     print(f"Skipped: {file_path} -> {output_file}")
-                    # Continue to next file
                     goto_next = True
                     break
                 elif resp in ('q', 'quit'):
@@ -162,6 +162,7 @@ def process_videos(input_dir, selected_filters, filter_numbers):
                     '-c:a', 'copy', output_file
                 ]
 
+        # Print processing line after any prompt
         print(f"Processing: {file_path.name} [{idx}/{total_videos}]")
         try:
             process = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.DEVNULL, text=True, bufsize=1)
