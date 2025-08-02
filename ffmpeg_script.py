@@ -7,7 +7,7 @@ from pathlib import Path
 filters = [
     'crop=1080:1080:700:0',  # Crop1 (ED)
     'crop=1080:1080:0:0',    # Crop2 (AB)
-    'eq=brightness=0.1:contrast=1.3:saturation=1.2:gamma=1.1',  # Light Fix
+    'eq=brightness=0.15:contrast=1.4:saturation=1.2:gamma=1.1',  # Light Fix
     'hqdn3d=1.5:1.5:6:6',    # Digital Noise Fix
     'unsharp=7:7:1.5:7:7:0.0',  # Strong Sharp & Noise
     'smartblur=1.5:-0.35:-3.5:0.65:0.25:2.0'  # Soft Sharp & Noise
@@ -33,23 +33,33 @@ def get_input_directory():
     print(f"Using input directory: {input_dir}")
     return input_dir
 
-def get_filter_selection():
+def get_filter_and_cpu_selection():
     print("\nAvailable filters:")
     for i, (name, filter_) in enumerate(zip(filter_names, filters), 1):
         print(f"[{i}] {name} : {filter_}")
     
     while True:
         try:
-            selection = input("\nEnter filter numbers to apply, separated by commas (e.g. 1,3,4): ")
-            selected = [int(x.strip()) for x in selection.split(',') if x.strip()]
+            selection = input("\nEnter filter numbers to apply (e.g. 1,3,4) [default: 1,3,4,5], and add 'gpu' to use GPU (e.g. 1,3,gpu): ")
+            use_gpu = False
+            if not selection.strip():
+                selected = [1, 3, 4, 5]
+            else:
+                parts = [x.strip().lower() for x in selection.split(',') if x.strip()]
+                if 'gpu' in parts:
+                    use_gpu = True
+                    parts = [p for p in parts if p != 'gpu']
+                selected = []
+                for p in parts:
+                    if p.isdigit():
+                        selected.append(int(p))
             valid_selections = [i-1 for i in selected if 0 < i <= len(filters)]
-            
             if not valid_selections:
                 print("No valid filters selected. Please try again.")
                 continue
-            return valid_selections
+            return valid_selections, use_gpu
         except ValueError:
-            print("Invalid input. Please enter numbers separated by commas.")
+            print("Invalid input. Please enter numbers separated by commas and/or 'gpu'.")
 
 def process_videos(input_dir, selected_filters, filter_numbers):
     output_dir = os.path.join(input_dir, 'output')
@@ -61,8 +71,7 @@ def process_videos(input_dir, selected_filters, filter_numbers):
         print(f"No MP4 files found in {input_dir}")
         return
 
-    use_cpu = input("Use CPU encoding instead of GPU? (slower but better quality) [y/N]: ").lower()
-    is_cpu = use_cpu in ('y', 'yes')
+    # use_gpu is now passed as an argument
 
     for file_path in mp4_files:
         output_file = os.path.join(
@@ -72,33 +81,33 @@ def process_videos(input_dir, selected_filters, filter_numbers):
 
         # Prepare ffmpeg command
         if platform.system() == 'Windows':
-            if is_cpu:
-                cmd = [
-                    'ffmpeg', '-i', str(file_path),
-                    '-vf', selected_filters,
-                    '-c:v', 'libx264', '-crf', '23', '-preset', 'medium',
-                    '-c:a', 'copy', output_file
-                ]
-            else:
+            if process_videos.use_gpu:
                 cmd = [
                     'ffmpeg', '-hwaccel', 'dxva2', '-i', str(file_path),
                     '-vf', selected_filters,
                     '-c:v', 'h264_nvenc',
                     '-c:a', 'copy', output_file
                 ]
-        else:  # Termux/Android
-            if is_cpu:
+            else:
                 cmd = [
                     'ffmpeg', '-i', str(file_path),
                     '-vf', selected_filters,
                     '-c:v', 'libx264', '-crf', '23', '-preset', 'medium',
                     '-c:a', 'copy', output_file
                 ]
-            else:
+        else:  # Termux/Android
+            if process_videos.use_gpu:
                 cmd = [
                     'ffmpeg', '-hwaccel', 'mediacodec', '-i', str(file_path),
                     '-vf', selected_filters,
                     '-c:v', 'h264_mediacodec',
+                    '-c:a', 'copy', output_file
+                ]
+            else:
+                cmd = [
+                    'ffmpeg', '-i', str(file_path),
+                    '-vf', selected_filters,
+                    '-c:v', 'libx264', '-crf', '23', '-preset', 'medium',
                     '-c:a', 'copy', output_file
                 ]
 
@@ -111,12 +120,11 @@ def process_videos(input_dir, selected_filters, filter_numbers):
 
 def main():
     input_dir = get_input_directory()
-    selected_indexes = get_filter_selection()
-    
+    selected_indexes, use_gpu = get_filter_and_cpu_selection()
     # Combine selected filters
     selected_filters = ','.join(filters[i] for i in selected_indexes)
     filter_numbers = [i + 1 for i in selected_indexes]
-    
+    process_videos.use_gpu = use_gpu
     process_videos(input_dir, selected_filters, filter_numbers)
     print("\nCompleted!")
 
